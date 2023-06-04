@@ -1,0 +1,41 @@
+[tool.poetry]
+name = "vit-hist-reg"
+version = "0.1.0"
+description = "Visual Transformers for Multimodal Histopathological Image Registration"
+authors = ["Iván Moreno"]
+license = "MIT"
+readme = "README.md"
+# packages = [{include = "vit_hist_reg"}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+albumentations = "0.5.1"
+ray = ">=1.0.1"
+einops = "0.3.0"
+kornia = "0.4.1"
+loguru = "0.5.3"
+yacs = ">=0.1.8"
+tqdm = "^4.65.0"
+timm = "^0.9.2"
+h5py = "3.1.0"
+joblib = ">=1.0.1"
+numpy = "^1.24.3"
+simpleitk = "^2.2.1"
+pandas = "^2.0.1"
+scikit-image = "^0.20.0"
+torch-summary = "^1.4.5"
+pytorch-lightning = "^2.0.2"
+torch = "2.0.1+cu118"
+torchvision = "0.15.2+cu118"
+sympy = "^1.12"
+QuadTreeAttention = {path = "./networks/QuadTreeAttention"}
+
+
+[[tool.poetry.source]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu118"
+priority = "supplemental"
+
+[build-system]
+requires = ["setuptools", "poetry-core"]
+build-backend = "poetry.core.masonry.api"

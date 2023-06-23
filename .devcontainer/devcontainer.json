@@ -5,7 +5,7 @@
   },
   "mounts": [
     {
-      "source": "/run/media/ivan/SAMSUNG/",
+      "source": "/media/ivan/HDD/",
       "target": "/data/",
       "type": "bind"
     }

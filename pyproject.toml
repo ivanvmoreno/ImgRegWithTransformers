@@ -30,6 +30,11 @@ name = "pytorch-cu111"
 url = "https://download.pytorch.org/whl/cu111/"
 priority = "explicit"
 
+
+[tool.poetry.group.dev.dependencies]
+jupyterlab = "^4.0.5"
+matplotlib = "^3.7.2"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

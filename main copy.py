@@ -1,6 +1,7 @@
 import os
 import time
 
+import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import SimpleITK as sitk
@@ -13,8 +14,6 @@ import deephistreg as dhr
 import torch
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-dataset_path = "/data/ANHIR_Parsed_1024_Masks"
 
 ### Identity - to create results without any registration (useful for creating the baseline)
 # output_path = None # TO DEFINE
@@ -46,31 +45,62 @@ dataset_path = "/data/ANHIR_Parsed_1024_Masks"
 ###
 
 ## Seg + Rotation Params + Affine - to create results from the initial rotation + affine registration (useful for creating the nonrigid training dataset)
+# STEP 1
+# dataset_path = "/data/ANHIR_Parsed_1024_Masks"
+# output_path = "/data/ANHIR_Out_Aff_1024_Masks_TRANSFORMED"
+# dhr_params = dict()
+# dhr_params["segmentation_mode"] = None  # or "deep_segmentation"
+# dhr_params["initial_rotation"] = False
+# dhr_params["affine_registration"] = True
+# dhr_params["nonrigid_registration"] = False
+# initial_rotation_params = dict()
+# initial_rotation_params["angle_step"] = 1
+# dhr_params["initial_rotation_params"] = initial_rotation_params
+# affine_registration_params = dict()
+# models_path = paths.models_path
+# affine_registration_params["model_path"] = "/data/outdoor_megadepth.ckpt"
+# affine_registration_params[
+#     "main_config_path"
+# ] = "./networks/feature_matching/configs/loftr/outdoor/loftr_ds_quadtree.py"
+# affine_registration_params["affine_type"] = "quadtree"
+# affine_registration_params["resize"] = False
+# dhr_params["affine_registration_params"] = affine_registration_params
+# segmentation_params = dict()
+# segmentation_params["model_path"] = None  # Path to segmentation model
+# dhr_params["segmentation_params"] = segmentation_params
+# load_masks = True
 ##
-# output_path = None # TO DEFINE
-output_path = "/data/ANHIR_Out_Aff_1024_NEW"
+
+# STEP 2 (only deformable)
+dataset_path = "/data/ANHIR_Out_Aff_1024_Masks_TRANSFORMED"
+output_path = "/data/ANHIR_Out_Aff_1024_Masks_TRANSFORMED_DEFORMABLE"
 dhr_params = dict()
 dhr_params["segmentation_mode"] = None  # or "deep_segmentation"
 dhr_params["initial_rotation"] = False
-dhr_params["affine_registration"] = True
-dhr_params["nonrigid_registration"] = False
+dhr_params["affine_registration"] = False
+dhr_params["nonrigid_registration"] = True
 initial_rotation_params = dict()
 initial_rotation_params["angle_step"] = 1
 dhr_params["initial_rotation_params"] = initial_rotation_params
-affine_registration_params = dict()
-models_path = paths.models_path
-affine_registration_params["model_path"] = "/data/outdoor_megadepth.ckpt"
-affine_registration_params[
-    "main_config_path"
-] = "./networks/feature_matching/configs/loftr/outdoor/loftr_ds_quadtree.py"
-affine_registration_params["affine_type"] = "quadtree"
-affine_registration_params["resize"] = False
-dhr_params["affine_registration_params"] = affine_registration_params
-segmentation_params = dict()
-segmentation_params["model_path"] = None  # Path to segmentation model
-dhr_params["segmentation_params"] = segmentation_params
+# affine_registration_params = dict()
+# models_path = paths.models_path
+# affine_registration_params["model_path"] = "/data/outdoor_megadepth.ckpt"
+# affine_registration_params[
+#     "main_config_path"
+# ] = "./networks/feature_matching/configs/loftr/outdoor/loftr_ds_quadtree.py"
+# affine_registration_params["affine_type"] = "quadtree"
+# affine_registration_params["resize"] = False
+nonrigid_registration_params = dict()  # Params used during training
+nonrigid_registration_params["model"] = "dfbr"
+dhr_params["nonrigid_registration_params"] = nonrigid_registration_params
+# dhr_params["affine_registration_params"] = affine_registration_params
+# segmentation_params = dict()
+# segmentation_params["model_path"] = None  # Path to segmentation model
+# dhr_params["segmentation_params"] = segmentation_params
 load_masks = True
 
+# ### Seg + Rotation Params + Affine + Nonrigid - to create final nonrigid results
+# output_path = None # TO DEFINE
 # dhr_params = dict()
 # dhr_params['segmentation_mode'] = "deep_segmentation"
 # dhr_params['initial_rotation'] = True
@@ -127,11 +157,11 @@ def run():
         print("Status: ", status)
         source = torch.from_numpy(source).to(device)
         target = torch.from_numpy(target).to(device)
+
         if load_masks:
             source_mask = torch.from_numpy(source_mask).to(device)
             target_mask = torch.from_numpy(target_mask).to(device)
-            dhr_params["segmentation_params"]["source_mask"] = target_mask
-            dhr_params["segmentation_params"]["target_mask"] = source_mask
+
         e_loading = time.time()
         loading_time = e_loading - b_loading
         print("Time for loading and memory transfer: ", loading_time)
@@ -139,32 +169,34 @@ def run():
         target, source, transformed_target, displacement_field, _ = dhr.deephistreg(
             target, source, device, dhr_params
         )
+
         e_registration = time.time()
         registration_time = e_registration - b_registration
         print("Time for registration: ", registration_time)
 
-        if show:
-            plt.figure()
-            plt.subplot(2, 3, 1)
-            plt.imshow(source.cpu().numpy(), cmap="gray")
-            plt.axis("off")
-            plt.subplot(2, 3, 2)
-            plt.imshow(transformed_target.cpu().numpy(), cmap="gray")
-            plt.axis("off")
-            plt.subplot(2, 3, 3)
-            plt.imshow(target.cpu().numpy(), cmap="gray")
-            plt.axis("off")
-            plt.subplot(2, 3, 4)
-            plt.imshow(displacement_field[0, :, :].cpu().numpy(), cmap="gray")
-            plt.axis("off")
-            plt.subplot(2, 3, 5)
-            plt.imshow(displacement_field[1, :, :].cpu().numpy(), cmap="gray")
-            plt.axis("off")
-            plt.show()
-
         transformed_source_landmarks = utils.transform_landmarks(
             source_landmarks, displacement_field
         )
+
+        if load_masks:
+            transformed_target_mask_save_path = os.path.join(
+                output_path, current_pair, "transformed_target_mask.mha"
+            )
+            source_mask_save_path = os.path.join(
+                output_path, current_pair, "source_mask.mha"
+            )
+            target_mask_save_path = os.path.join(
+                output_path, current_pair, "target_mask.mha"
+            )
+
+            transformed_target_mask = utils.warp_tensor(
+                target_mask, displacement_field, device=device
+            )
+            transformed_target_mask = transformed_target_mask.clamp(0, 1)
+            transformed_target_mask = transformed_target_mask.cpu().numpy()
+            blurred = cv2.GaussianBlur(transformed_target_mask, (5, 5), 0)
+            transformed_target_mask = torch.from_numpy(blurred).to(device)
+            transformed_target_mask = transformed_target_mask.round()
 
         source_save_path = os.path.join(output_path, current_pair, "source.mha")
         target_save_path = os.path.join(output_path, current_pair, "target.mha")
@@ -195,6 +227,18 @@ def run():
         utils.save_landmarks(
             transformed_source_landmarks, transformed_source_landmarks_path
         )
+        if load_masks:
+            sitk.WriteImage(
+                sitk.GetImageFromArray(transformed_target_mask.cpu().numpy()),
+                transformed_target_mask_save_path,
+            )
+            sitk.WriteImage(
+                sitk.GetImageFromArray(source_mask.cpu().numpy()), source_mask_save_path
+            )
+            sitk.WriteImage(
+                sitk.GetImageFromArray(target_mask.cpu().numpy()), target_mask_save_path
+            )
+
         if status == "training":
             utils.save_landmarks(target_landmarks, target_landmarks_path)
             try:

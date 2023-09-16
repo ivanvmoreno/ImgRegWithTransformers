@@ -252,8 +252,8 @@ def parse_dataset(csv_path, dataset_path, output_path, max_size=1024):
 
         to_save_source_png = cv2.cvtColor(resampled_source, cv2.COLOR_GRAY2RGB)
         to_save_target_png = cv2.cvtColor(resampled_target, cv2.COLOR_GRAY2RGB)
-        to_save_source_mha = sitk.GetImageFromArray(resampled_source)
-        to_save_target_mha = sitk.GetImageFromArray(resampled_target)
+        to_save_source_mha = sitk.GetImageFromArray(resampled_source.astype(np.float32))
+        to_save_target_mha = sitk.GetImageFromArray(resampled_target.astype(np.float32))
         to_save_source_landmarks = resampled_source_landmarks.astype(np.float32)
         if status == "training":
             to_save_target_landmarks = resampled_target_landmarks.astype(np.float32)
@@ -308,6 +308,6 @@ def parse_dataset(csv_path, dataset_path, output_path, max_size=1024):
 if __name__ == "__main__":
     csv_path = "/data/dataset_medium.csv"
     dataset_path = "/data/ANHIR_Data"
-    output_path = "/data/ANHIR_Parsed_1024_Masks"
+    output_path = "/data/ANHIR_Parsed_1024_Masks_2"
     output_max_size = 1024
     parse_dataset(csv_path, dataset_path, output_path, output_max_size)
